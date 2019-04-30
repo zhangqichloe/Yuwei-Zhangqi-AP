@@ -1,0 +1,114 @@
+!pip install .
+import APClustering as apc
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.spatial import ConvexHull
+from sklearn.datasets.samples_generator import make_blobs
+import warnings
+from sklearn.cluster import KMeans, MeanShift
+from sklearn import metrics
+from sklearn.datasets.samples_generator import make_blobs
+from sklearn.cluster import AffinityPropagation
+
+#Test on simulated data1
+
+points = np.vstack(np.random.randn(100, 2))
+plt.figure(figsize=(5,5))
+plt.scatter(points[:, 0], points[:, 1])
+axes = plt.gca()
+axes.set_xlim([-3, 3])
+axes.set_ylim([-3, 3])
+
+results = apc.cluster(points, pref = np.ones(100) * -0.9)
+
+clusters = results[0]
+examplars = results[1]
+n_clusters = len(examplars)
+    
+xs = []
+ys = []
+for i in range(n_clusters):
+    x = []
+    y = []
+    for p in clusters[i]:
+        x.append(p[0])
+        y.append(p[1])
+    xs.append(x)
+    ys.append(y)
+
+vs = []
+for c in clusters:
+    if len(c) > 2:
+        vs.append(ConvexHull(c).vertices)
+    else:
+        vs.append(range(len(c)))
+
+bs_x = []
+bs_y = []
+
+for i in range(n_clusters):
+    b_x = []
+    b_y = []
+    for n in vs[i]:
+        b_x.append(clusters[i][n][0])
+        b_y.append(clusters[i][n][1])
+    b_x.append(b_x[0])
+    b_y.append(b_y[0])
+    bs_x.append(b_x)
+    bs_y.append(b_y)
+        
+colors = plt.cm.rainbow(np.linspace(0, 1, n_clusters))
+plt.figure(figsize=(5, 5))
+f = plt.gca()
+f.set_xlim([-3, 3])
+f.set_ylim([-3, 3])
+for i in range(n_clusters):
+    plt.scatter(xs[i], ys[i], color = colors[i])
+    f.add_artist(plt.Circle(examplars[i], 0.05, fill = False, lw = 2, color = 'black'))
+    plt.plot(bs_x[i], bs_y[i], color = colors[i])
+    
+ # Test on clustering data(small data set)
+np.random.seed(100)
+npts = 100
+nc = 3
+X, y = make_blobs(n_samples=npts, centers=nc)
+plt.scatter(X[:, 0], X[:, 1], s=5, c=y,
+            cmap=plt.cm.get_cmap('Accent', nc))
+plt.axis('square')
+pass
+
+results = apc.cluster(X, mode_term = 'matrices', lim_exemp = 1.0, pref = np.ones(100) * -3.3)
+centers = results[1]
+
+center_xs = apc.get_coords(0, centers)
+center_ys = apc.get_coords(1, centers)
+
+plt.scatter(X[:, 0], X[:, 1],s=5, c=y, cmap=plt.cm.get_cmap('Accent', nc))
+plt.scatter(center_xs, center_ys, marker = 'x', linewidth = 3, s = 100, c = 'red')
+plt.axis('square')
+pass
+
+
+#Test on clustering data (large data set)
+
+np.random.seed(500)
+npts1 = 500
+nc1 = 4
+X1, y1 = make_blobs(n_samples=npts1, centers=nc1)
+plt.scatter(X1[:, 0], X1[:, 1], s=5, c=y1,
+            cmap=plt.cm.get_cmap('Accent', nc1))
+plt.axis('square')
+pass
+
+results_1 = apc.cluster(X1, mode_term = 'clusters', lim_exemp = 0.405, pref = np.ones(500) * -1.493)
+centers_1 = results_1[1]
+
+center_xs_1 = apc.get_coords(0, centers_1)
+center_ys_1 = apc.get_coords(1, centers_1)
+
+plt.scatter(X1[:, 0], X1[:, 1],s=5, c=y1, cmap=plt.cm.get_cmap('Accent', nc1))
+plt.scatter(center_xs_1, center_ys_1, marker='x', linewidth=3, s=100, c='red')
+plt.axis('square')
+pass
+
+
