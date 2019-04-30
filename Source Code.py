@@ -31,17 +31,11 @@ def get_coords(dimension, vs):
         coordinates.append(v[dimension])
     return coordinates
 
-def cluster_given_similarity_matrix(s, max_iter, conv_threshold, pref):
-    """''
+def cluster_given_similarity_matrix(s, max_iter, conv_iter, damping, conv_threshold, pref, mode_term, lim_exemp):
+    """
     Identifies clusters and examplars
-    
-    Parameters:
-    -----------
-    s: similarity matrix
-    conv_threshold: tolerance
-    pref: preference
-    max_iter: max iterations
-    '''"""
+  
+    """
     n = s.shape[0]
 
     if pref == 'default':
@@ -57,12 +51,21 @@ def cluster_given_similarity_matrix(s, max_iter, conv_threshold, pref):
     d_old = np.zeros((n, n))
     dist = -np.inf
     dist_old = np.inf
-    tol_conv = 0.05
+    distances = []
     n_it = 0
+    sign_ex = np.zeros(1)
+    sign_ex_old = np.zeros(1)
+    n_stab_it = 0
+    clusters = []
+    clusters_old = []
     
     # alternating massage passing
     for it in range(max_iter):
-         # updates responsibility matrix
+        
+        # records the number of iterations
+        n_it += 1
+        
+        # updates responsibility matrix
         aux = np.add(a, s)
         largest_elems = np.max(aux, axis = 0)
         largest_elems_ind = np.argmax(aux, axis = 0)
@@ -70,7 +73,7 @@ def cluster_given_similarity_matrix(s, max_iter, conv_threshold, pref):
         second_largest_elems = np.max(aux, axis = 0)
         aux = np.tile(largest_elems, (n, 1)).T
         aux[indices, largest_elems_ind] = second_largest_elems
-        r = (r + s - aux) * 0.5
+        r = (r + s - aux) * damping
 
         # updates availability matrix
         aux = np.maximum(r, 0)
@@ -79,54 +82,56 @@ def cluster_given_similarity_matrix(s, max_iter, conv_threshold, pref):
         temp = np.diag(aux).copy()
         aux = np.maximum(aux, 0)
         set_diag(aux, temp)
-        a = (a - aux) * 0.5
+        a = (a - aux) * damping
+        
+        # identifies exemplars and clusters
+        sign_ex_old = sign_ex
+        clusters_old = clusters
+        sign_ex = np.sign((np.diag(a) + np.diag(r)) - lim_exemp)
+        ind_ex = indices[sign_ex > 0]
+        clusters = []
+        if len(ind_ex) > 0:
+            det = np.add(a, r)
+            k = 0
+            for i in indices:
+                if i not in ind_ex:
+                    clusters.append([0, np.argmax(det[i, ind_ex])])
+                else:
+                    clusters.append([1, k])
+                    k += 1
         
         #breaks from iteration if converged
-        d_old = d
-        d = np.add(a, r)
-        dist_old = dist
-        dist = dist_matrix(d_old, d)
-        if abs(dist_old - dist) < tol_conv:
-            break
+        if mode_term == 'clusters':
+            if clusters_old == clusters and len(clusters) > 0:
+                n_stab_it += 1
+            if n_stab_it == conv_iter:
+                break
+        elif mode_term == 'matrices':
+            d_old = d
+            d = np.add(a, r)
+            distances.append(dist_matrix(d_old, d))
+            if len(distances) >= conv_iter:
+                to_break = True
+                for i in range(conv_iter):
+                    if abs(distances[len(distances) - i - 1]) > conv_threshold:
+                        to_break = False
+                if to_break:
+                    break
             
-        n_it += 1
+    return clusters, len(ind_ex), n_it
 
-    # identifies examplars
-    tol = conv_threshold
-    sign_ex = np.sign((np.diag(a) + np.diag(r)) - tol)
-    ind_ex = indices[sign_ex > 0]
-    #print(abs(dist_old - dist))
+# the default pref is the median of all similarities
+# the default mode of termination is termination after stabilization of clusters
+# an alternative mode of termination is termination after stabilization of
+# the availability and responsibility matrices
+def cluster(data, max_iter = 200, conv_iter = 20, damping = 0.5, conv_threshold = 1e-3, pref = 'default', mode_term = 'clusters', lim_exemp = 1e-3):
     
-    # identifies clusters
-    det = np.add(a, r)
-    clusters_view = []
-    k = 0
-    for i in indices:
-        if i not in ind_ex:
-            clusters_view.append([0, np.argmax(det[i, ind_ex])])
-        else:
-            clusters_view.append([1, k])
-            k += 1
-            
-    return clusters_view, len(ind_ex), n_it
-
-def cluster(data, max_iter, conv_threshold, pref):
-    """''
-    Return labels, index, centers and iteration times
-    
-    Parameters:
-    -----------
-    data: data set
-    conv_threshold: tolerance
-    pref: preference
-    max_iter: max iterations
-    '''"""
     clusters = []
     centers = []
     labels = []
     
     s = get_similarity_matrix(data)
-    results = cluster_given_similarity_matrix(s, max_iter, conv_threshold, pref)
+    results = cluster_given_similarity_matrix(s, max_iter, conv_iter, damping, conv_threshold, pref, mode_term, lim_exemp)
     n_clusters = results[1]
 
     for i in range(n_clusters):
