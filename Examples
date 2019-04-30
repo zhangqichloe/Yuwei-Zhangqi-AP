@@ -1,0 +1,64 @@
+!pip install .
+import APClustering as apc
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.spatial import ConvexHull
+from sklearn.datasets.samples_generator import make_blobs
+import warnings
+from sklearn.cluster import KMeans, MeanShift,Birch
+from sklearn import metrics
+from sklearn.datasets.samples_generator import make_blobs
+from sklearn.cluster import AffinityPropagation
+from sklearn.datasets import load_breast_cancer
+import pandas as pd
+
+# breast cancer data
+bc = load_breast_cancer(return_X_y = True)
+data = bc[0]
+labels_t = bc[1]
+warnings.simplefilter('ignore')
+accuracy = []
+n = 5
+for i in range(n):
+    results = apc.cluster(data, mode_term = 'matrices', lim_exemp = 100 - i*19, pref = np.ones(len(data)) * (-74))
+    labels = np.array(results[3])
+    accuracy.append(metrics.adjusted_rand_score(labels_t, labels))
+    
+plt.plot(np.arange(n), accuracy, 'k', color = 'blue')
+pass
+
+# Comparing our results with another two clustering methods
+results = apc.cluster(data, mode_term = 'matrices', lim_exemp = 100, pref = np.ones(len(data)) * -74)
+labels = np.array(results[3])
+print("Affinity Propagation Rand Index: {}".format(metrics.adjusted_rand_score(labels_t, labels)))
+
+kmeans = KMeans().fit(data)
+labels_kmeans = kmeans.labels_
+print("Kmeans Rand Index: {}".format(metrics.adjusted_rand_score(labels_t, labels_kmeans)))
+birch = Birch().fit(data)
+labels_birch = birch.labels_
+print("Birch Rand Index: {}".format(metrics.adjusted_rand_score(labels_t, labels_birch)))
+
+#Fetch_olivetti_faces data
+
+from sklearn.datasets import fetch_olivetti_faces 
+of = fetch_olivetti_faces()
+data = of.data
+# this is the algorithm we developed
+# this section generates the labels for the 400 images respectively, representing the clusters they belong to
+warnings.simplefilter('ignore')
+results = apc.cluster(data, mode_term = 'matrices', pref = np.ones(400) * -10)
+labels_1 = np.array(results[3])
+
+# this is the algorithm included in sklearn.cluster
+# the following parameters result in relatively high accuracy, compared to other combinations
+ap = AffinityPropagation(convergence_iter = 20, damping = 0.9, max_iter = 1000).fit(data)
+labels_2 = ap.labels_
+
+# true labels
+labels_t = np.empty(400)
+for i in range(400):
+    labels_t[i] = int(i / 10)
+    
+print("Affinity Propagation Rand Index 1: {}".format(metrics.adjusted_rand_score(labels_t, labels_1)))
+print("Affinity Propagation Rand Index 2: {}".format(metrics.adjusted_rand_score(labels_t, labels_2))
