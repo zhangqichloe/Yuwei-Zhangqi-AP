@@ -125,7 +125,7 @@ def cluster_given_similarity_matrix(s, max_iter, conv_iter, damping, conv_thresh
 # an alternative mode of termination is termination after stabilization of
 # the availability and responsibility matrices
 def cluster(data, max_iter = 200, conv_iter = 20, damping = 0.5, conv_threshold = 1e-3, pref = 'default', mode_term = 'clusters', lim_exemp = 1e-3):
-    
+    """Return a collection of clusters, exemplars, iteration numbers and labels"""
     clusters = []
     centers = []
     labels = []
