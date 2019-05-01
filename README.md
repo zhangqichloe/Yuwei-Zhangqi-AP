@@ -1,5 +1,7 @@
 # Yuwei-Zhangqi-AP
 
+Authors: Yuwei(vivixu7), Zhangqi(zhangqichloe)
+
 Documentation for APClustering
 
 This clustering method implements "affinity propagation". The main function is cluster(data, max_iter, conv_iter, damping, conv_threshold, pref, mode_term, lim_exemp). While other functions are callable, in practice they do not have much of a use except in the execution of the main function.
